@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
 import { Product, Stock } from '../types';
@@ -11,6 +11,13 @@ interface UpdateProductAmount {
   productId: number;
   amount: number;
 }
+
+interface ProductAvailableInStock {
+  productId: number;
+  amount: number;
+}
+
+class OutOfStockError extends Error {}
 
 interface CartContextData {
   cart: Product[];
@@ -36,15 +43,29 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     try {
       setCart(cart.filter(product => product.id !== productId));
     } catch {
-      // TODO
+      toast.error('Erro na remoção do produto');
     }
   };
 
+  
+  const productAvailableInStock = async ({productId, amount}: ProductAvailableInStock) => {
+    const response = await api.get<Stock[]>('/stock');
+    const stock = response.data;
+    const stockProduct = stock.filter(product => product.id === productId);
+    if (stockProduct.length === 0 || stockProduct[0].amount < amount){
+      throw new OutOfStockError();
+    }
+    return true;
+  }
+  
   const updateProductAmount = async ({
     productId,
     amount,
   }: UpdateProductAmount) => {
     try {
+      if(!productAvailableInStock({productId, amount})) {
+        throw new Error('Quantidade solicitada fora de estoque');
+      }
       setCart(cart.map(product => {
         if(product.id === productId){
           product.amount = amount;
@@ -52,8 +73,12 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         
         return product;
       }))
-    } catch {
-      // TODO
+    } catch (error) {
+      if (error instanceof OutOfStockError){
+        toast.error('Quantidade solicitada fora de estoque');
+      } else {
+        toast.error('Erro na adição do produto');
+      }
     }
   };
 
@@ -62,7 +87,8 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     try {
       const productFound = cart.filter(product => product.id === productId);
       if(productFound.length !== 0){
-        updateProductAmount({productId, amount: productFound[0].amount+1});
+        const newAmount = productFound[0].amount+1;
+        updateProductAmount({productId, amount: newAmount});
         return;
       }
 
@@ -72,8 +98,12 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         ...product,
         amount: 1
       }])
-    } catch {
-      // TODO
+    } catch (error) {
+      if (error instanceof OutOfStockError){
+        toast.error('Quantidade solicitada fora de estoque');
+      } else {
+        toast.error('Erro na alteração de quantidade do produto');
+      }
     }
   };
 
