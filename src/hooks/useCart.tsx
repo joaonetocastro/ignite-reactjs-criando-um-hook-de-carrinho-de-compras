@@ -55,10 +55,9 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
 
   
   const checkIfProductIsAvailableInStock = async ({productId, amount}: CheckIfProductIsAvailableInStock) => {
-    const response = await api.get<Stock[]>('/stock');
+    const response = await api.get<Stock>(`/stock/${productId}`);
     const stock = response.data;
-    const stockProduct = stock.filter(product => product.id === productId);
-    if (stockProduct.length === 0 || stockProduct[0].amount < amount){
+    if (stock.amount < amount){
       throw new OutOfStockError();
     }
     return true;
