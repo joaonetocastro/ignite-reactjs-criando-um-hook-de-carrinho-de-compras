@@ -46,6 +46,9 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const removeProduct = (productId: number) => {
     try {
       const newCart = cart.filter(product => product.id !== productId);
+      if(newCart.length === cart.length){
+        throw new Error();
+      }
       setCart(newCart);
       saveCartInLocalStorage(newCart);
     } catch {
@@ -100,6 +103,7 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
         return;
       }
 
+      await checkIfProductIsAvailableInStock({productId, amount: 1})
       const response = await api.get<Product>(`/products/${productId}`)
       const product = response.data;
       const newCart = [...cart, {
