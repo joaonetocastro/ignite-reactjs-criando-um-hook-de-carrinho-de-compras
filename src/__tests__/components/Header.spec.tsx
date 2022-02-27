@@ -38,6 +38,6 @@ describe('Header Component', () => {
     const { getByTestId } = render(<Header />);
 
     const cartSizeCounter = getByTestId('cart-size');
-    expect(cartSizeCounter).toHaveTextContent('2 itens');
+    expect(cartSizeCounter).toHaveTextContent('3 itens');
   });
 });
