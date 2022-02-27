@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { api } from '../services/api';
 import { Product, Stock } from '../types';
@@ -23,26 +23,18 @@ const CartContext = createContext<CartContextData>({} as CartContextData);
 
 export function CartProvider({ children }: CartProviderProps): JSX.Element {
   const [cart, setCart] = useState<Product[]>(() => {
-    // const storagedCart = Buscar dados do localStorage
+    const storagedCart = localStorage.getItem('@RocketShoes:cart');
 
-    // if (storagedCart) {
-    //   return JSON.parse(storagedCart);
-    // }
+    if (storagedCart) {
+      return JSON.parse(storagedCart);
+    }
 
     return [];
   });
 
-  const addProduct = async (productId: number) => {
-    try {
-      // TODO
-    } catch {
-      // TODO
-    }
-  };
-
   const removeProduct = (productId: number) => {
     try {
-      // TODO
+      setCart(cart.filter(product => product.id !== productId));
     } catch {
       // TODO
     }
@@ -53,11 +45,41 @@ export function CartProvider({ children }: CartProviderProps): JSX.Element {
     amount,
   }: UpdateProductAmount) => {
     try {
-      // TODO
+      setCart(cart.map(product => {
+        if(product.id === productId){
+          product.amount = amount;
+        }
+        
+        return product;
+      }))
     } catch {
       // TODO
     }
   };
+
+
+  const addProduct = async (productId: number) => {
+    try {
+      const productFound = cart.filter(product => product.id === productId);
+      if(productFound.length !== 0){
+        updateProductAmount({productId, amount: productFound[0].amount+1});
+        return;
+      }
+
+      const response = await api.get<Product>(`/products/${productId}`)
+      const product = response.data;
+      setCart([...cart, {
+        ...product,
+        amount: 1
+      }])
+    } catch {
+      // TODO
+    }
+  };
+
+  useEffect(() => {
+    localStorage.setItem('@RocketShoes:cart', JSON.stringify(cart))
+  }, [cart])
 
   return (
     <CartContext.Provider
